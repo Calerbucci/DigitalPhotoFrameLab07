@@ -1,7 +1,7 @@
 module lab07_2(
     input clk,
     input rst,
-    input shift,
+//    input shift,
     input split,
     output reg [3:0] vgaRed,
     output reg [3:0] vgaGreen,
@@ -57,11 +57,9 @@ module lab07_2(
         end
         else begin
             if(play == 0) begin
-                if(shift)
-                    play = 2'd1;
-                else if(split)
+               if(split)
                     play = 2'd2;
-                else
+               else
                     play = play;
             end
             else begin
@@ -88,35 +86,23 @@ module lab07_2(
                     done <= 0;
                 end
                 2'd1 : begin
-                    if(shift_left) begin
-                        if(black_frame > 0) begin
-                            black_frame = black_frame - 2;
-                            shift_left = shift_left;
-                            done = 0;
-                        end
-                        else begin
-                            black_frame <= 0;
-                            shift_left <= 0;
-                            done = 0;
-                        end
+                    f1 = (f1 == 240) ? 240 : f1 + 2;
+                    if(f2 == 320) begin
+                        f2 = 320;
+                        done = 1;                      
+                        position = position;                       
                     end
                     else begin
-                        if(black_frame < 480) begin
-                            black_frame = black_frame + 2;
-                            done = 0;
-                        end
-                        else begin
-                            black_frame = 479;
-                            done = 1;
-                        end
+                        f2 = f2 + 2;
+                        position = position + 1;
                     end
-                end
+                end              
                 2'd2 : begin
                     f1 = (f1 == 240) ? 240 : f1 + 2;
                     if(f2 == 320) begin
                         f2 = 320;
                         done = 1;
-                        position = position;
+                        position = position;                       
                     end
                     else begin
                         f2 = f2 + 2;
@@ -138,33 +124,49 @@ module lab07_2(
                     pixel_addr = ((h_cnt>>1)+320*(v_cnt>>1)+ position*320 )% 76800;
                     {vgaRed, vgaBlue, vgaGreen} = pixel;
                 end
-                2'd1 : begin
-                    if(shift_left) begin
-                        pixel_addr = ((h_cnt>>1)+320*(v_cnt>>1))% 76800;
-                        {vgaRed, vgaBlue, vgaGreen} = (h_cnt > black_frame) ? 12'h0 : pixel;
+//                2'd1 : begin
+//                    if(shift_left) begin
+//                        pixel_addr = ((h_cnt>>1)+320*(v_cnt>>1))% 76800;
+//                        {vgaRed, vgaBlue, vgaGreen} = (h_cnt > black_frame) ? 12'h0 : pixel;
+//                    end
+//                    else begin
+//                        pixel_addr = ((h_cnt>>1)+320*(v_cnt>>1))% 76800;
+//                        {vgaRed, vgaBlue, vgaGreen} = (v_cnt > black_frame) ? 12'h0 : pixel;
+//                    end
+//                end         
+                2'd1: begin
+                     if(v_cnt >= 0 && v_cnt < 240 - f1 && h_cnt < 640 && h_cnt >= 0) begin
+                        pixel_addr = ((h_cnt>>1) + 320*(v_cnt>>1) + 320* position)% 76800;
+//                        pixel_addr = ((h_cnt>>1) + (320*(v_cnt>>1) + 320* (240 - position)))% 76800;
+                        {vgaRed, vgaBlue, vgaGreen} = pixel;
+                     end
+                     else if(v_cnt >= 240 + f1 && v_cnt < 480 && h_cnt < 640 && h_cnt >= 0) begin
+                        pixel_addr = ((h_cnt>>1) + (320*(v_cnt>>1) + 320* (240 - position)))% 76800;
+//                        pixel_addr = ((h_cnt>>1) + 320*(v_cnt>>1) + 320* position)% 76800;
+                        {vgaRed, vgaBlue, vgaGreen} = pixel;
                     end
-                    else begin
-                        pixel_addr = ((h_cnt>>1)+320*(v_cnt>>1))% 76800;
-                        {vgaRed, vgaBlue, vgaGreen} = (v_cnt > black_frame) ? 12'h0 : pixel;
+                     else begin
+                        {vgaRed, vgaBlue, vgaGreen} = 12'h0;
                     end
                 end
                 2'd2 : begin
-                    if(v_cnt >= 0 && v_cnt < 240 - f1 && h_cnt < 320 && h_cnt >= 0) begin
-                        pixel_addr = ((h_cnt>>1) + 320*(v_cnt>>1) + 320* position)% 76800;
-                        {vgaRed, vgaBlue, vgaGreen} = pixel;
-                    end
-                    else if(v_cnt >= 0 && v_cnt < 240 && h_cnt < 640 && h_cnt >= 320 + f2 ) begin
+//                    if(v_cnt >= 0 && v_cnt < 240 - f1 && h_cnt < 320 && h_cnt >= 0) begin
+//                        pixel_addr = ((h_cnt>>1) + 320*(v_cnt>>1) + 320* position)% 76800;
+//                        {vgaRed, vgaBlue, vgaGreen} = pixel;
+//                    end
+//                    else
+                     if(v_cnt >= 0 && v_cnt < 480 && h_cnt < 640 && h_cnt >= 320 + f2 ) begin
                         pixel_addr = ((((h_cnt>>1) + position * 319)%320 + 320*(v_cnt>>1)))% 76800;
                         {vgaRed, vgaBlue, vgaGreen} = pixel;
                     end
-                    else if(v_cnt >= 240 && v_cnt < 480 && h_cnt < 320 - f2 && h_cnt >= 0) begin
+                    else if(v_cnt >= 0 && v_cnt < 480 && h_cnt < 320 - f2 && h_cnt >= 0) begin
                         pixel_addr = ((((h_cnt>>1) + position) + 320*(v_cnt>>1)))% 76800;
                         {vgaRed, vgaBlue, vgaGreen} = pixel;
                     end
-                    else if(v_cnt >= 240 + f1 && v_cnt < 480 && h_cnt < 640 && h_cnt >= 320) begin
-                        pixel_addr = ((h_cnt>>1) + (320*(v_cnt>>1) + 320* (240 - position)))% 76800;
-                        {vgaRed, vgaBlue, vgaGreen} = pixel;
-                    end
+//                    else if(v_cnt >= 240 + f1 && v_cnt < 480 && h_cnt < 640 && h_cnt >= 320) begin
+//                        pixel_addr = ((h_cnt>>1) + (320*(v_cnt>>1) + 320* (240 - position)))% 76800;
+//                        {vgaRed, vgaBlue, vgaGreen} = pixel;
+//                    end
                     else begin
                         {vgaRed, vgaBlue, vgaGreen} = 12'h0;
                     end
