@@ -20,12 +20,11 @@ module lab07_2(
     
     reg [16:0] pixel_addr;
     reg [9:0] position;
-    reg [9:0] black_frame;
     reg [9:0] f1;
     reg [9:0] f2;
     
     reg [1:0] play;
-    reg shift_left, done;
+    reg  done,done1;
     
     clock_divisor clk_wiz_0_inst(
       .clk(clk),
@@ -52,13 +51,16 @@ module lab07_2(
     );
     
     always@(posedge clk or posedge rst) begin
-        if(rst || done) begin
+        if(rst) begin
             play = 2'd0;
         end
         else begin
             if(play == 0) begin
                if(split)
+                if(done1)
                     play = 2'd2;
+               else if(done)
+                    play = 2'd1;
                else
                     play = play;
             end
@@ -69,39 +71,37 @@ module lab07_2(
     end
     
     always@(posedge clk_22 or posedge rst) begin
-        if(rst || done) begin
+        if(rst) begin
             position <= 0;
-            black_frame <= 640;
             f1 <= 0;
             f2 <= 0;
-            shift_left <= 1;
             done <= 0;
+            done1 <= 1;
         end
         else begin
             case(play)
                 2'd0 : begin
                     position <= 0;
-                    black_frame <= 640;
-                    shift_left <= 1;
                     done <= 0;
+                    done1 <= 1;
                 end
                 2'd1 : begin
-                    f1 = (f1 == 240) ? 240 : f1 + 2;
-                    if(f2 == 320) begin
-                        f2 = 320;
-                        done = 1;                      
-                        position = position;                       
+                    if(f1 == 240 )begin
+                        f1 = 240;
+                        done1 = 1;
+                        done = 0;
+                        position = position;
                     end
                     else begin
-                        f2 = f2 + 2;
+                        f1 = f1+2;
                         position = position + 1;
                     end
                 end              
                 2'd2 : begin
-                    f1 = (f1 == 240) ? 240 : f1 + 2;
                     if(f2 == 320) begin
                         f2 = 320;
                         done = 1;
+                        done1 = 0;
                         position = position;                       
                     end
                     else begin
@@ -112,6 +112,7 @@ module lab07_2(
                 default : begin
                     position <= position;
                     done <= 0;
+                    done1 <=0;
                 end
             endcase
         end
@@ -123,26 +124,14 @@ module lab07_2(
                 2'd0 : begin
                     pixel_addr = ((h_cnt>>1)+320*(v_cnt>>1)+ position*320 )% 76800;
                     {vgaRed, vgaBlue, vgaGreen} = pixel;
-                end
-//                2'd1 : begin
-//                    if(shift_left) begin
-//                        pixel_addr = ((h_cnt>>1)+320*(v_cnt>>1))% 76800;
-//                        {vgaRed, vgaBlue, vgaGreen} = (h_cnt > black_frame) ? 12'h0 : pixel;
-//                    end
-//                    else begin
-//                        pixel_addr = ((h_cnt>>1)+320*(v_cnt>>1))% 76800;
-//                        {vgaRed, vgaBlue, vgaGreen} = (v_cnt > black_frame) ? 12'h0 : pixel;
-//                    end
-//                end         
+                end     
                 2'd1: begin
-                     if(v_cnt >= 0 && v_cnt < 240 - f1 && h_cnt < 640 && h_cnt >= 0) begin
-                        pixel_addr = ((h_cnt>>1) + 320*(v_cnt>>1) + 320* position)% 76800;
-//                        pixel_addr = ((h_cnt>>1) + (320*(v_cnt>>1) + 320* (240 - position)))% 76800;
+                     if(v_cnt >= 240 && v_cnt < 480 - f1 && h_cnt < 640 && h_cnt >= 0) begin
+                         pixel_addr = ((h_cnt>>1) + 320*(v_cnt>>1) + 320* position)% 76800;
                         {vgaRed, vgaBlue, vgaGreen} = pixel;
-                     end
-                     else if(v_cnt >= 240 + f1 && v_cnt < 480 && h_cnt < 640 && h_cnt >= 0) begin
-                        pixel_addr = ((h_cnt>>1) + (320*(v_cnt>>1) + 320* (240 - position)))% 76800;
-//                        pixel_addr = ((h_cnt>>1) + 320*(v_cnt>>1) + 320* position)% 76800;
+                     end  
+                      else  if(v_cnt >= 0+f1 && v_cnt < 240 && h_cnt < 640 && h_cnt >= 0) begin
+                         pixel_addr = ((h_cnt>>1) + (320*(v_cnt>>1) - 320 * (240-position)))% 76800;
                         {vgaRed, vgaBlue, vgaGreen} = pixel;
                     end
                      else begin
@@ -150,12 +139,7 @@ module lab07_2(
                     end
                 end
                 2'd2 : begin
-//                    if(v_cnt >= 0 && v_cnt < 240 - f1 && h_cnt < 320 && h_cnt >= 0) begin
-//                        pixel_addr = ((h_cnt>>1) + 320*(v_cnt>>1) + 320* position)% 76800;
-//                        {vgaRed, vgaBlue, vgaGreen} = pixel;
-//                    end
-//                    else
-                     if(v_cnt >= 0 && v_cnt < 480 && h_cnt < 640 && h_cnt >= 320 + f2 ) begin
+                     if(v_cnt >= 0 && v_cnt < 480 && h_cnt < 640 && h_cnt >= 320 + f2) begin
                         pixel_addr = ((((h_cnt>>1) + position * 319)%320 + 320*(v_cnt>>1)))% 76800;
                         {vgaRed, vgaBlue, vgaGreen} = pixel;
                     end
@@ -163,10 +147,6 @@ module lab07_2(
                         pixel_addr = ((((h_cnt>>1) + position) + 320*(v_cnt>>1)))% 76800;
                         {vgaRed, vgaBlue, vgaGreen} = pixel;
                     end
-//                    else if(v_cnt >= 240 + f1 && v_cnt < 480 && h_cnt < 640 && h_cnt >= 320) begin
-//                        pixel_addr = ((h_cnt>>1) + (320*(v_cnt>>1) + 320* (240 - position)))% 76800;
-//                        {vgaRed, vgaBlue, vgaGreen} = pixel;
-//                    end
                     else begin
                         {vgaRed, vgaBlue, vgaGreen} = 12'h0;
                     end
